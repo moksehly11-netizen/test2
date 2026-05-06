@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تحليل جنس العملاء - أسماء مصرية</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+      color: #2d3748;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    /* Upload card */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+    }
+
+    .upload-zone {
+      border: 2.5px dashed #cbd5e0;
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #667eea;
+      background: #ebf4ff;
+    }
+
+    .upload-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .upload-text { color: #4a5568; font-size: 1rem; }
+    .upload-hint { color: #a0aec0; font-size: 0.82rem; margin-top: 6px; }
+
+    .file-name {
+      margin-top: 14px;
+      font-weight: 600;
+      color: #667eea;
+      font-size: 0.9rem;
+      min-height: 20px;
+    }
+
+    /* Column selector */
+    #col-selector {
+      display: none;
+      margin-top: 20px;
+    }
+
+    #col-selector label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #4a5568;
+    }
+
+    #col-selector select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #fff;
+      color: #2d3748;
+      appearance: none;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn:hover { opacity: .9; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Spinner */
+    #spinner {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #667eea;
+      font-size: 1rem;
+    }
+
+    .spinner-ring {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    #error-box {
+      display: none;
+      background: #fff5f5;
+      border: 1.5px solid #fc8181;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #c53030;
+      margin-top: 16px;
+    }
+
+    /* Results */
+    #results { display: none; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      border-radius: 14px;
+      padding: 22px 18px;
+      text-align: center;
+      color: #fff;
+    }
+
+    .stat-card.female { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .stat-card.male   { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .stat-card.total  { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .stat-card.unknown { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #4a5568; }
+
+    .stat-number {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .stat-pct {
+      font-size: 1rem;
+      opacity: .85;
+      margin-top: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      margin-top: 8px;
+      opacity: .9;
+      font-weight: 600;
+    }
+
+    /* Bar chart */
+    .bar-section { margin-bottom: 24px; }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .bar-track {
+      background: #e2e8f0;
+      border-radius: 99px;
+      height: 22px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s ease;
+    }
+
+    .bar-fill.female { background: linear-gradient(90deg, #f093fb, #f5576c); }
+    .bar-fill.male   { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+    .bar-fill.unknown { background: #cbd5e0; }
+
+    /* Note */
+    .note {
+      background: #fffbeb;
+      border: 1.5px solid #f6e05e;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: #744210;
+      margin-bottom: 20px;
+    }
+
+    /* Table preview */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: #f7fafc;
+      padding: 10px 14px;
+      text-align: right;
+      font-weight: 700;
+      color: #4a5568;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #2d3748;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .badge.female { background: #fed7e2; color: #97266d; }
+    .badge.male   { background: #bee3f8; color: #2c5282; }
+    .badge.unknown { background: #e2e8f0; color: #718096; }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 14px;
+    }
+
+    #used-col {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: #2b6cb0;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 تحليل جنس العملاء</h1>
+    <p class="subtitle">ارفع شيت الأوردرات وهيحسبلك نسبة الستات والرجالة من الأسماء المصرية</p>
+
+    <div class="card">
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">اسحب الملف هنا أو اضغط للاختيار</div>
+        <div class="upload-hint">يدعم: Excel (.xlsx / .xls) و CSV</div>
+        <div class="file-name" id="file-name"></div>
+      </div>
+
+      <div id="col-selector">
+        <label for="col-select">اختار عمود الأسماء:</label>
+        <select id="col-select">
+          <option value="">-- اختار العمود --</option>
+        </select>
+      </div>
+
+      <button class="btn" id="analyze-btn" disabled>تحليل الأسماء</button>
+    </div>
+
+    <div id="spinner"><div class="spinner-ring"></div> جاري التحليل...</div>
+    <div id="error-box"></div>
+
+    <div id="results">
+      <div class="card">
+        <div id="used-col"></div>
+
+        <div class="stats-grid">
+          <div class="stat-card female">
+            <div class="stat-number" id="stat-female">0</div>
+            <div class="stat-pct" id="pct-female">0%</div>
+            <div class="stat-label">👩 ستات</div>
+          </div>
+          <div class="stat-card male">
+            <div class="stat-number" id="stat-male">0</div>
+            <div class="stat-pct" id="pct-male">0%</div>
+            <div class="stat-label">👨 رجالة</div>
+          </div>
+          <div class="stat-card total">
+            <div class="stat-number" id="stat-total">0</div>
+            <div class="stat-pct" id="pct-classified"></div>
+            <div class="stat-label">📦 إجمالي الأوردرات</div>
+          </div>
+          <div class="stat-card unknown">
+            <div class="stat-number" id="stat-unknown">0</div>
+            <div class="stat-pct" id="pct-unknown">0%</div>
+            <div class="stat-label">❓ مش محدد</div>
+          </div>
+        </div>
+
+        <div class="bar-section">
+          <p class="section-title">من الأوردرات المُحددة</p>
+          <div class="bar-label">
+            <span>👩 ستات</span>
+            <span id="bar-female-label">0%</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill female" id="bar-female" style="width:0%"></div>
+          </div>
+          <div class="bar-label">
+            <span>👨 رجالة</span>
+            <span id="bar-male-label">0%</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill male" id="bar-male" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="note" id="unknown-note" style="display:none">
+          ⚠️ <strong id="unknown-count"></strong> اسم مش قادر يتحدد جنسه. ممكن يكون أسماء أجنبية أو أسماء نادرة.
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">أول 500 صف (اسم + جنس)</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الاسم</th>
+                <th>الجنس</th>
+              </tr>
+            </thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const fileNameEl = document.getElementById('file-name');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const colSelector = document.getElementById('col-selector');
+    const colSelect = document.getElementById('col-select');
+    const uploadZone = document.getElementById('upload-zone');
+    const spinner = document.getElementById('spinner');
+    const errorBox = document.getElementById('error-box');
+    const results = document.getElementById('results');
+
+    let selectedFile = null;
+    let pendingColumnSelection = false;
+
+    // Drag & drop
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      selectedFile = file;
+      fileNameEl.textContent = '📄 ' + file.name;
+      colSelector.style.display = 'none';
+      colSelect.innerHTML = '<option value="">-- اختار العمود --</option>';
+      pendingColumnSelection = false;
+      analyzeBtn.disabled = false;
+      hideError();
+      results.style.display = 'none';
+    }
+
+    analyzeBtn.addEventListener('click', () => {
+      if (!selectedFile) return;
+      if (pendingColumnSelection && !colSelect.value) {
+        showError('اختار عمود الأسماء الأول');
+        return;
+      }
+      doAnalyze();
+    });
+
+    colSelect.addEventListener('change', () => {
+      if (colSelect.value) analyzeBtn.disabled = false;
+    });
+
+    async function doAnalyze() {
+      hideError();
+      results.style.display = 'none';
+      spinner.style.display = 'block';
+      analyzeBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      if (pendingColumnSelection && colSelect.value) {
+        formData.append('name_column', colSelect.value);
+      }
+
+      try {
+        const res = await fetch('/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.status === 422 && data.needs_column_selection) {
+          // Ask user to pick column
+          populateColSelect(data.columns);
+          colSelector.style.display = 'block';
+          pendingColumnSelection = true;
+          analyzeBtn.disabled = true;
+          showError('مش قادر أحدد عمود الأسماء تلقائياً — اختار العمود من القائمة وبعدين اضغط تحليل تاني');
+          spinner.style.display = 'none';
+          return;
+        }
+
+        if (!res.ok) {
+          showError(data.error || 'حصل خطأ');
+          spinner.style.display = 'none';
+          analyzeBtn.disabled = false;
+          return;
+        }
+
+        renderResults(data);
+      } catch (err) {
+        showError('حصل خطأ في الاتصال بالسيرفر');
+      } finally {
+        spinner.style.display = 'none';
+        analyzeBtn.disabled = false;
+      }
+    }
+
+    function populateColSelect(columns) {
+      colSelect.innerHTML = '<option value="">-- اختار العمود --</option>';
+      columns.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        colSelect.appendChild(opt);
+      });
+    }
+
+    function renderResults(data) {
+      document.getElementById('stat-female').textContent = data.female.toLocaleString();
+      document.getElementById('pct-female').textContent = data.female_pct + '%';
+      document.getElementById('stat-male').textContent = data.male.toLocaleString();
+      document.getElementById('pct-male').textContent = data.male_pct + '%';
+      document.getElementById('stat-total').textContent = data.total.toLocaleString();
+      document.getElementById('pct-classified').textContent =
+        data.classified + ' محدد من ' + data.total;
+      document.getElementById('stat-unknown').textContent = data.unknown.toLocaleString();
+      document.getElementById('pct-unknown').textContent = data.unknown_pct + '%';
+
+      // Bars (from classified)
+      const fp = data.female_pct_classified;
+      const mp = data.male_pct_classified;
+      document.getElementById('bar-female').style.width = fp + '%';
+      document.getElementById('bar-male').style.width = mp + '%';
+      document.getElementById('bar-female-label').textContent = fp + '%';
+      document.getElementById('bar-male-label').textContent = mp + '%';
+
+      // Used column notice
+      document.getElementById('used-col').textContent =
+        '🔍 تم تحليل عمود: "' + data.name_column_used + '"';
+
+      // Unknown note
+      const unknoteEl = document.getElementById('unknown-note');
+      if (data.unknown > 0) {
+        unknoteEl.style.display = 'block';
+        document.getElementById('unknown-count').textContent = data.unknown;
+      } else {
+        unknoteEl.style.display = 'none';
+      }
+
+      // Table preview
+      const tbody = document.getElementById('preview-body');
+      tbody.innerHTML = '';
+      const genderLabel = { female: '👩 ست', male: '👨 راجل', unknown: '❓ مش محدد' };
+      const genderClass = { female: 'female', male: 'male', unknown: 'unknown' };
+      data.rows.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${escHtml(row.name)}</td>
+          <td><span class="badge ${genderClass[row.gender]}">${genderLabel[row.gender]}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      results.style.display = 'block';
+      results.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showError(msg) {
+      errorBox.textContent = '⚠️ ' + msg;
+      errorBox.style.display = 'block';
+    }
+
+    function hideError() {
+      errorBox.style.display = 'none';
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
